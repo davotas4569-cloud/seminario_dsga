@@ -1,1 +1,2622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tienda La Esquina - Pedidos e Inventario</title>
 
+  <style>
+    /* =========================================================
+       VARIABLES DE DISEÑO
+       Se definen una sola vez y se reutilizan en todo el CSS.
+       ========================================================= */
+    :root {
+      --color-principal: #0f766e;        /* Verde azulado (teal) */
+      --color-principal-hover: #115e59;  /* Teal más oscuro para hover */
+      --color-principal-claro: #14b8a6;  /* Teal brillante para degradados */
+      --color-principal-suave: #ccfbf1;  /* Teal muy claro para fondos */
+      --color-fondo: #f0f5f4;            /* Fondo general de la página */
+      --color-tarjeta: #ffffff;
+      --color-texto: #1f2937;
+      --color-texto-suave: #6b7280;
+      --color-borde: #d1d5db;
+      --color-error: #dc2626;
+      --color-error-fondo: #fef2f2;
+      --color-exito: #15803d;
+      --color-exito-fondo: #f0fdf4;
+      --radio: 12px;                     /* Bordes redondeados de tarjetas */
+      --radio-boton: 999px;              /* Botones tipo "píldora" */
+      --sombra: 0 4px 16px rgba(15, 118, 110, 0.08),
+                0 1px 3px rgba(0, 0, 0, 0.06);
+      --alto-menu: 64px;                 /* Altura del menú superior */
+    }
+
+    /* =========================================================
+       ESTILOS BASE
+       ========================================================= */
+    * {
+      box-sizing: border-box;  /* El padding no aumenta el ancho */
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;  /* Desplazamiento suave al usar el menú */
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--color-fondo);
+      color: var(--color-texto);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Texto solo para lectores de pantalla (no se ve, pero se lee) */
+    .visualmente-oculto {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+
+    /* El atributo hidden siempre debe ocultar, aunque haya otros estilos */
+    [hidden] {
+      display: none !important;
+    }
+
+    /* =========================================================
+       MENÚ SUPERIOR (fijo al hacer scroll)
+       ========================================================= */
+    .menu {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--alto-menu);
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 1px 0 #e5ecea;
+    }
+
+    .menu-contenido {
+      max-width: 1100px;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .marca {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--color-principal);
+      text-decoration: none;
+    }
+
+    .marca-icono {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--color-principal), var(--color-principal-claro));
+      color: #fff;
+      font-size: 1.1rem;
+    }
+
+    .menu-enlaces {
+      list-style: none;
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .menu-enlaces a {
+      display: block;
+      padding: 0.5rem 0.9rem;
+      border-radius: var(--radio-boton);
+      color: var(--color-texto);
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    .menu-enlaces a:hover,
+    .menu-enlaces a:focus-visible {
+      background-color: var(--color-principal-suave);
+      color: var(--color-principal-hover);
+      outline: none;
+    }
+
+    .menu-izquierda {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    /* Indicador de dónde se guardan los datos */
+    .estado-conexion {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.65rem;
+      border-radius: var(--radio-boton);
+      background-color: #f3f4f6;
+      color: var(--color-texto-suave);
+      white-space: nowrap;
+    }
+
+    .estado-conexion.conectado {
+      background-color: var(--color-exito-fondo);
+      color: var(--color-exito);
+    }
+
+    .estado-conexion.local {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .estado-conexion.sin-conexion {
+      background-color: var(--color-error-fondo);
+      color: var(--color-error);
+    }
+
+    /* Botón de hamburguesa: solo se ve en celular */
+    .menu-boton {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.6rem;
+      color: var(--color-principal);
+      padding: 0.25rem 0.6rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* =========================================================
+       SECCIÓN DE BIENVENIDA
+       ========================================================= */
+    .bienvenida {
+      background: linear-gradient(135deg, var(--color-principal), var(--color-principal-claro));
+      color: #ffffff;
+      text-align: center;
+      padding: 3.5rem 1rem 5rem;  /* Espacio abajo para que la tarjeta se monte encima */
+    }
+
+    .bienvenida h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.2;
+    }
+
+    .bienvenida p {
+      max-width: 560px;
+      margin: 0.75rem auto 0;
+      opacity: 0.95;
+      font-size: 1.05rem;
+    }
+
+    .bienvenida-botones {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.75rem;
+    }
+
+    .boton-enlace {
+      display: inline-block;
+      padding: 0.75rem 1.6rem;
+      border-radius: var(--radio-boton);
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.15s, background-color 0.2s;
+    }
+
+    .boton-enlace:hover {
+      transform: translateY(-2px);
+    }
+
+    .boton-blanco {
+      background-color: #ffffff;
+      color: var(--color-principal);
+    }
+
+    .boton-transparente {
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      color: #ffffff;
+    }
+
+    /* Pequeñas ventajas de la tienda */
+    .ventajas {
+      list-style: none;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      margin-top: 2rem;
+      font-size: 0.92rem;
+      opacity: 0.95;
+    }
+
+    /* =========================================================
+       CONTENEDOR PRINCIPAL Y TARJETAS
+       ========================================================= */
+    main {
+      width: 100%;
+      max-width: 1100px;
+      margin: -3rem auto 0;  /* Sube para superponerse a la bienvenida */
+      padding: 0 1rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .tarjeta {
+      background-color: var(--color-tarjeta);
+      border-radius: var(--radio);
+      box-shadow: var(--sombra);
+      padding: 1.5rem;
+      /* Deja espacio para el menú fijo al saltar con los enlaces */
+      scroll-margin-top: calc(var(--alto-menu) + 1rem);
+    }
+
+    .tarjeta h2 {
+      font-size: 1.3rem;
+      color: var(--color-principal);
+    }
+
+    .subtitulo {
+      color: var(--color-texto-suave);
+      font-size: 0.92rem;
+      margin-bottom: 1.25rem;
+    }
+
+    /* =========================================================
+       FORMULARIOS
+       ========================================================= */
+
+    /* Grupo de campos con título (fieldset) */
+    fieldset {
+      border: 1px solid #e5ecea;
+      border-radius: 10px;
+      padding: 1rem 1.1rem 1.2rem;
+      margin-bottom: 1.25rem;
+    }
+
+    legend {
+      font-weight: 700;
+      color: var(--color-principal-hover);
+      padding: 0 0.4rem;
+    }
+
+    /* Cuadrícula de 2 columnas en pantallas grandes */
+    .rejilla {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .ocupa-todo {
+      grid-column: 1 / -1;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .campo label,
+    .campo .etiqueta {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .campo input,
+    .campo select {
+      font: inherit;
+      padding: 0.65rem 0.85rem;
+      border: 1.5px solid var(--color-borde);
+      border-radius: 8px;
+      background-color: #ffffff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    .campo input:focus,
+    .campo select:focus {
+      outline: none;
+      border-color: var(--color-principal);
+      box-shadow: 0 0 0 3px var(--color-principal-suave);
+    }
+
+    .campo select:disabled {
+      background-color: #f3f4f6;
+      color: var(--color-texto-suave);
+      cursor: not-allowed;
+    }
+
+    /* Texto de ayuda debajo de un campo */
+    .ayuda {
+      font-size: 0.8rem;
+      color: var(--color-texto-suave);
+    }
+
+    /* Campo con error: borde rojo (la clase se agrega desde JavaScript) */
+    .invalido,
+    .invalido:focus,
+    .campo .invalido,
+    .campo .invalido:focus {
+      border-color: var(--color-error) !important;
+      box-shadow: 0 0 0 3px var(--color-error-fondo) !important;
+    }
+
+    /* ---------- Opciones de pago (radio con forma de botón) ---------- */
+    .opciones-pago {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      padding: 2px;
+    }
+
+    .opcion-pago {
+      flex: 1 1 180px;
+      cursor: pointer;
+    }
+
+    /* El círculo del radio se oculta visualmente, pero sigue siendo accesible */
+    .opcion-pago input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .opcion-pago span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      border: 1.5px solid var(--color-borde);
+      border-radius: 10px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .opcion-pago:hover span {
+      border-color: var(--color-principal-claro);
+    }
+
+    /* Opción seleccionada */
+    .opcion-pago input:checked + span {
+      border-color: var(--color-principal);
+      background-color: var(--color-principal-suave);
+      color: var(--color-principal-hover);
+    }
+
+    .opcion-pago input:focus-visible + span {
+      box-shadow: 0 0 0 3px var(--color-principal-suave);
+    }
+
+    .nota-pago {
+      margin-top: 0.75rem;
+      font-size: 0.88rem;
+      background-color: #f7fbfa;
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+      color: var(--color-principal-hover);
+    }
+
+    /* ---------- Selector de productos del pedido ---------- */
+    .selector-producto {
+      display: grid;
+      grid-template-columns: 1fr 1.4fr 110px auto;
+      gap: 0.75rem;
+      align-items: end;
+    }
+
+    /* Recuadro que muestra el precio fijo del producto elegido */
+    .info-producto {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      font-size: 0.92rem;
+      background-color: #f7fbfa;
+      border-radius: 8px;
+      padding: 0.6rem 0.85rem;
+    }
+
+    .info-producto strong {
+      color: var(--color-principal-hover);
+    }
+
+    /* Total del pedido */
+    .total-pedido {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1rem;
+      padding: 0.9rem 1rem;
+      border-radius: 10px;
+      background-color: var(--color-principal-suave);
+      color: var(--color-principal-hover);
+      font-size: 1.05rem;
+    }
+
+    .total-pedido strong {
+      font-size: 1.35rem;
+    }
+
+    .carrito-vacio {
+      text-align: center;
+      color: var(--color-texto-suave);
+      padding: 1rem;
+      font-size: 0.92rem;
+    }
+
+    .acciones-formulario {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    /* =========================================================
+       MENSAJES DE ERROR Y DE ÉXITO
+       ========================================================= */
+    .mensaje {
+      margin-top: 1rem;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      font-size: 0.92rem;
+    }
+
+    .mensaje ul {
+      padding-left: 1.2rem;
+    }
+
+    .mensaje-error {
+      background-color: var(--color-error-fondo);
+      border-left: 4px solid var(--color-error);
+      color: var(--color-error);
+    }
+
+    .mensaje-exito {
+      background-color: var(--color-exito-fondo);
+      border-left: 4px solid var(--color-exito);
+      color: var(--color-exito);
+    }
+
+    /* =========================================================
+       BOTONES
+       ========================================================= */
+    button {
+      font: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--radio-boton);
+      padding: 0.65rem 1.4rem;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s, color 0.2s;
+    }
+
+    button:active {
+      transform: scale(0.97);  /* Pequeño efecto al presionar */
+    }
+
+    button:focus-visible {
+      outline: 3px solid var(--color-principal-suave);
+      outline-offset: 2px;
+    }
+
+    .btn-principal {
+      background-color: var(--color-principal);
+      color: #ffffff;
+    }
+
+    .btn-principal:hover {
+      background-color: var(--color-principal-hover);
+    }
+
+    .btn-secundario {
+      background-color: #e5e7eb;
+      color: var(--color-texto);
+    }
+
+    .btn-secundario:hover {
+      background-color: #d1d5db;
+    }
+
+    /* Botones pequeños dentro de tablas y tarjetas */
+    .btn-pequeno {
+      padding: 0.35rem 0.9rem;
+      font-size: 0.85rem;
+    }
+
+    .btn-editar {
+      background-color: var(--color-principal-suave);
+      color: var(--color-principal-hover);
+    }
+
+    .btn-editar:hover {
+      background-color: #99f6e4;
+    }
+
+    .btn-eliminar {
+      background-color: var(--color-error-fondo);
+      color: var(--color-error);
+    }
+
+    .btn-eliminar:hover {
+      background-color: #fee2e2;
+    }
+
+    /* =========================================================
+       TABLAS (carrito e inventario)
+       ========================================================= */
+    .tabla {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    .tabla th {
+      text-align: left;
+      background-color: var(--color-principal-suave);
+      color: var(--color-principal-hover);
+      font-weight: 600;
+      padding: 0.7rem 0.75rem;
+    }
+
+    /* Esquinas redondeadas del encabezado de la tabla */
+    .tabla th:first-child { border-radius: 8px 0 0 8px; }
+    .tabla th:last-child  { border-radius: 0 8px 8px 0; }
+
+    .tabla td {
+      padding: 0.7rem 0.75rem;
+      border-bottom: 1px solid #eef2f1;
+      vertical-align: middle;
+    }
+
+    .tabla tbody tr:hover {
+      background-color: #f7fbfa;
+    }
+
+    .celda-acciones {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    /* ---------- Resumen del inventario ---------- */
+    .resumen {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .resumen-dato {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+      padding: 0.85rem 1rem;
+      border: 1px solid #e5ecea;
+      border-radius: 10px;
+      background-color: #f7fbfa;
+    }
+
+    .resumen-etiqueta {
+      font-size: 0.8rem;
+      color: var(--color-texto-suave);
+    }
+
+    .resumen-dato strong {
+      font-size: 1.35rem;
+      color: var(--color-texto);
+    }
+
+    .resumen-destacado {
+      background: linear-gradient(135deg, var(--color-principal), var(--color-principal-claro));
+      border-color: transparent;
+    }
+
+    .resumen-destacado .resumen-etiqueta,
+    .resumen-destacado strong {
+      color: #ffffff;
+    }
+
+    /* ---------- Buscador ---------- */
+    .buscador {
+      position: relative;
+      margin-bottom: 0.75rem;
+    }
+
+    .buscador-icono {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.95rem;
+      pointer-events: none;
+    }
+
+    .buscador input {
+      width: 100%;
+      font: inherit;
+      padding: 0.7rem 1rem 0.7rem 2.6rem;
+      border: 1.5px solid var(--color-borde);
+      border-radius: var(--radio-boton);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .buscador input:focus {
+      outline: none;
+      border-color: var(--color-principal);
+      box-shadow: 0 0 0 3px var(--color-principal-suave);
+    }
+
+    .resultado-busqueda {
+      font-size: 0.85rem;
+      color: var(--color-texto-suave);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ---------- Productos con pocas unidades (menos de 5) ---------- */
+    /* Toda la fila se pinta de naranja suave con una franja a la izquierda */
+    .tabla tr.fila-stock-bajo,
+    .tabla tbody tr.fila-stock-bajo:hover {
+      background-color: #fff7ed;
+    }
+
+    .tabla tr.fila-stock-bajo td:first-child {
+      box-shadow: inset 4px 0 0 #f97316;
+    }
+
+    /* Cantidad en naranja con el ícono de advertencia */
+    .stock-bajo {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #c2410c;
+      font-weight: 700;
+    }
+
+    .etiqueta-agotado {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.05rem 0.45rem;
+      border-radius: var(--radio-boton);
+      background-color: #ffedd5;
+    }
+
+    /* =========================================================
+       MENSAJE FLOTANTE (toast) EN LA ESQUINA
+       ========================================================= */
+    .contenedor-toast {
+      position: fixed;
+      right: 1.25rem;
+      bottom: 1.25rem;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-width: min(360px, calc(100vw - 2rem));
+      pointer-events: none;   /* No bloquea los clics de la página */
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.8rem 0.9rem 0.8rem 1rem;
+      border-radius: 10px;
+      background-color: #ffffff;
+      color: var(--color-texto);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      border-left: 5px solid var(--color-principal);
+      font-size: 0.92rem;
+      pointer-events: auto;
+      animation: toast-entrar 0.3s ease-out;
+    }
+
+    .toast-exito   { border-left-color: var(--color-exito); }
+    .toast-edicion { border-left-color: #2563eb; }
+    .toast-borrado { border-left-color: var(--color-error); }
+
+    .toast-icono {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+
+    .toast-texto {
+      flex: 1;
+    }
+
+    .toast-cerrar {
+      background: none;
+      color: var(--color-texto-suave);
+      padding: 0.1rem 0.4rem;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .toast-cerrar:hover {
+      color: var(--color-texto);
+      background-color: #f3f4f6;
+    }
+
+    /* Clase que se agrega justo antes de quitar el mensaje */
+    .toast.saliendo {
+      animation: toast-salir 0.25s ease-in forwards;
+    }
+
+    @keyframes toast-entrar {
+      from { opacity: 0; transform: translateX(110%); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes toast-salir {
+      to { opacity: 0; transform: translateX(110%); }
+    }
+
+    /* Si el usuario prefiere menos animaciones, solo aparece y desaparece */
+    @media (prefers-reduced-motion: reduce) {
+      .toast,
+      .toast.saliendo {
+        animation-duration: 0.01ms;
+      }
+    }
+
+    .mensaje-vacio {
+      text-align: center;
+      color: var(--color-texto-suave);
+      padding: 2rem 1rem;
+    }
+
+    /* =========================================================
+       LISTA DE PEDIDOS REGISTRADOS (tarjetas)
+       ========================================================= */
+    .lista-pedidos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .pedido {
+      border: 1px solid #e5ecea;
+      border-radius: 10px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      font-size: 0.92rem;
+    }
+
+    /* Pedido recién creado: brilla en verde azulado unos segundos */
+    .pedido.pedido-nuevo {
+      animation: resaltar-pedido 2.5s ease-out;
+    }
+
+    @keyframes resaltar-pedido {
+      0%, 30% {
+        border-color: var(--color-principal);
+        box-shadow: 0 0 0 4px var(--color-principal-suave);
+        background-color: #f0fdfa;
+      }
+      100% {
+        border-color: #e5ecea;
+        box-shadow: none;
+        background-color: transparent;
+      }
+    }
+
+    .pedido-encabezado {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+
+    .pedido-encabezado h3 {
+      font-size: 1.05rem;
+      color: var(--color-principal-hover);
+    }
+
+    .pedido-fecha {
+      font-size: 0.8rem;
+      color: var(--color-texto-suave);
+    }
+
+    .pedido-cliente {
+      color: var(--color-texto-suave);
+    }
+
+    .pedido-cliente strong {
+      color: var(--color-texto);
+    }
+
+    .pedido-items {
+      list-style: none;
+      border-top: 1px dashed #d8e3e1;
+      border-bottom: 1px dashed #d8e3e1;
+      padding: 0.5rem 0;
+    }
+
+    .pedido-items li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.15rem 0;
+    }
+
+    .pedido-pie {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .pedido-total {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+
+    /* Etiqueta de método de pago */
+    .insignia {
+      display: inline-block;
+      padding: 0.15rem 0.6rem;
+      border-radius: var(--radio-boton);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .insignia-efectivo {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    .insignia-transferencia {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+
+    /* =========================================================
+       PIE DE PÁGINA
+       ========================================================= */
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      color: var(--color-texto-suave);
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+
+    /* =========================================================
+       DISEÑO PARA TABLET (pantallas de 860px o menos)
+       ========================================================= */
+    @media (max-width: 860px) {
+      /* El selector de productos pasa a 2 columnas */
+      .selector-producto {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* =========================================================
+       DISEÑO PARA CELULAR (pantallas de 640px o menos)
+       ========================================================= */
+    @media (max-width: 640px) {
+
+      /* ---------- Menú: se convierte en menú desplegable ---------- */
+      .menu-boton {
+        display: block;
+      }
+
+      .menu-enlaces {
+        display: none;
+        position: absolute;
+        top: var(--alto-menu);
+        left: 0;
+        right: 0;
+        flex-direction: column;
+        background-color: #ffffff;
+        padding: 0.5rem 1rem 1rem;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+      }
+
+      /* La clase "abierto" se agrega con JavaScript al tocar el botón */
+      .menu-enlaces.abierto {
+        display: flex;
+      }
+
+      .menu-enlaces a {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+      }
+
+      .tarjeta {
+        padding: 1.1rem;
+      }
+
+      fieldset {
+        padding: 0.9rem 0.8rem 1rem;
+      }
+
+      /* Los formularios pasan a una sola columna */
+      .rejilla,
+      .selector-producto {
+        grid-template-columns: 1fr;
+      }
+
+      .acciones-formulario button,
+      .selector-producto button {
+        flex: 1 1 100%;
+        width: 100%;
+      }
+
+      /* Las tablas se transforman en "mini tarjetas":
+         cada fila es un bloque y cada celda muestra su etiqueta. */
+      .tabla thead {
+        display: none;
+      }
+
+      .tabla,
+      .tabla tbody,
+      .tabla tr,
+      .tabla td {
+        display: block;
+        width: 100%;
+      }
+
+      .tabla tr {
+        border: 1px solid #e5ecea;
+        border-radius: 10px;
+        margin-bottom: 0.85rem;
+        padding: 0.5rem 0.85rem;
+      }
+
+      .tabla td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.45rem 0;
+        text-align: right;
+      }
+
+      .tabla tr td:last-child {
+        border-bottom: none;
+      }
+
+      /* Muestra el nombre de la columna antes del valor (viene de data-label) */
+      .tabla td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--color-texto-suave);
+        text-align: left;
+      }
+
+      .celda-acciones {
+        justify-content: flex-end;
+      }
+
+      .lista-pedidos {
+        grid-template-columns: 1fr;
+      }
+
+      /* En celular la fila con pocas unidades es una tarjeta con borde naranja */
+      .tabla tr.fila-stock-bajo {
+        border-color: #fdba74;
+      }
+
+      .tabla tr.fila-stock-bajo td:first-child {
+        box-shadow: none;
+      }
+
+      /* El mensaje flotante va abajo, ocupando el ancho de la pantalla */
+      .contenedor-toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+        max-width: none;
+      }
+
+      /* El resumen pasa a una columna y el valor total va primero */
+      .resumen {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .resumen-destacado {
+        grid-column: 1 / -1;
+        order: -1;
+      }
+
+      /* En celular el nombre de la tienda se achica para dar espacio */
+      .marca {
+        font-size: 1rem;
+      }
+
+      .marca-icono {
+        width: 32px;
+        height: 32px;
+      }
+    }
+
+    /* Celulares muy angostos: se oculta el texto de la marca */
+    @media (max-width: 380px) {
+      .marca-texto {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================
+       MENÚ SUPERIOR
+       ========================================================= -->
+  <nav class="menu" aria-label="Menú principal">
+    <div class="menu-contenido">
+      <div class="menu-izquierda">
+        <a href="#inicio" class="marca">
+          <span class="marca-icono" aria-hidden="true">🛒</span>
+          <span class="marca-texto">Tienda La Esquina</span>
+        </a>
+        <!-- Indica si los datos se guardan en el servidor o solo en este navegador -->
+        <span class="estado-conexion" id="estado-conexion" role="status">● Cargando…</span>
+      </div>
+
+      <!-- Botón hamburguesa (solo visible en celular) -->
+      <button type="button" class="menu-boton" id="menu-boton"
+              aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-enlaces">☰</button>
+
+      <ul class="menu-enlaces" id="menu-enlaces">
+        <li><a href="#inicio">Inicio</a></li>
+        <li><a href="#pedido">Hacer pedido</a></li>
+        <li><a href="#pedidos">Pedidos</a></li>
+        <li><a href="#inventario">Inventario</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- =========================================================
+       BIENVENIDA
+       ========================================================= -->
+  <header class="bienvenida" id="inicio">
+    <h1>¡Bienvenido a Tienda La Esquina!</h1>
+    <p>Los productos de siempre, a precios justos y sin salir de casa.
+       Arma tu pedido, elige cómo pagar y te lo llevamos a la puerta.</p>
+
+    <div class="bienvenida-botones">
+      <a href="#pedido" class="boton-enlace boton-blanco">Hacer mi pedido</a>
+      <a href="#inventario" class="boton-enlace boton-transparente">Ver productos</a>
+    </div>
+
+    <ul class="ventajas">
+      <li>🚚 Domicilio en el barrio</li>
+      <li>💵 Efectivo o transferencia</li>
+      <li>🏷️ Precios fijos y claros</li>
+    </ul>
+  </header>
+
+  <main>
+
+    <!-- =========================================================
+         FORMULARIO DE PEDIDO
+         ========================================================= -->
+    <section class="tarjeta" id="pedido">
+      <h2>Haz tu pedido</h2>
+      <p class="subtitulo">Completa tus datos, agrega los productos que necesitas y confirma.</p>
+
+      <!-- novalidate: las validaciones las hace nuestro JavaScript -->
+      <form id="form-pedido" autocomplete="on" novalidate>
+
+        <!-- ----- Datos del cliente ----- -->
+        <fieldset>
+          <legend>1. Tus datos</legend>
+          <div class="rejilla">
+            <div class="campo">
+              <label for="cliente-nombre">Nombre completo</label>
+              <input type="text" id="cliente-nombre" name="nombre"
+                     placeholder="Ej: María Fernanda López" maxlength="80" autocomplete="name">
+            </div>
+
+            <div class="campo">
+              <label for="cliente-cedula">Cédula</label>
+              <input type="text" id="cliente-cedula" name="cedula"
+                     placeholder="Ej: 1020304050" maxlength="15" inputmode="numeric">
+              <span class="ayuda">Solo números, entre 6 y 10 dígitos.</span>
+            </div>
+
+            <div class="campo">
+              <label for="cliente-celular">Número de celular</label>
+              <input type="tel" id="cliente-celular" name="celular"
+                     placeholder="Ej: 3001234567" maxlength="13" inputmode="numeric" autocomplete="tel-national">
+              <span class="ayuda">10 dígitos, empieza por 3.</span>
+            </div>
+
+            <div class="campo">
+              <label for="cliente-direccion">Dirección de entrega</label>
+              <input type="text" id="cliente-direccion" name="direccion"
+                     placeholder="Ej: Calle 45 # 12-30, apto 201" maxlength="120" autocomplete="street-address">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- ----- Selección de productos ----- -->
+        <fieldset>
+          <legend>2. Productos</legend>
+
+          <div class="selector-producto">
+            <div class="campo">
+              <label for="pedido-categoria">Categoría</label>
+              <select id="pedido-categoria">
+                <option value="">-- Elige --</option>
+                <!-- Las opciones se llenan con JavaScript según el inventario -->
+              </select>
+            </div>
+
+            <div class="campo">
+              <label for="pedido-producto">Producto</label>
+              <select id="pedido-producto" disabled>
+                <option value="">-- Primero elige una categoría --</option>
+              </select>
+            </div>
+
+            <div class="campo">
+              <label for="pedido-cantidad">Cantidad</label>
+              <input type="number" id="pedido-cantidad" min="1" step="1" value="1" inputmode="numeric">
+            </div>
+
+            <button type="button" id="btn-agregar" class="btn-principal">Agregar</button>
+          </div>
+
+          <!-- Precio fijo del producto elegido (el cliente NO lo escribe) -->
+          <div class="info-producto" id="info-producto" hidden>
+            <span>Precio unitario: <strong id="info-precio"></strong></span>
+            <span>Disponibles: <strong id="info-disponibles"></strong></span>
+            <span>Subtotal: <strong id="info-subtotal"></strong></span>
+          </div>
+
+          <!-- Carrito: productos agregados al pedido -->
+          <h3 class="subtitulo" style="margin: 1.25rem 0 0.5rem; font-weight: 600;">Tu pedido</h3>
+
+          <table class="tabla" id="tabla-carrito">
+            <thead>
+              <tr>
+                <th scope="col">Producto</th>
+                <th scope="col">Precio</th>
+                <th scope="col">Cantidad</th>
+                <th scope="col">Subtotal</th>
+                <th scope="col"><span class="visualmente-oculto">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody id="cuerpo-carrito"></tbody>
+          </table>
+
+          <p class="carrito-vacio" id="carrito-vacio">Aún no has agregado productos.</p>
+
+          <div class="total-pedido">
+            <span>Total a pagar</span>
+            <strong id="total-pedido">$ 0</strong>
+          </div>
+        </fieldset>
+
+        <!-- ----- Forma de pago ----- -->
+        <fieldset>
+          <legend>3. Forma de pago</legend>
+
+          <div class="opciones-pago" id="opciones-pago" role="radiogroup" aria-label="Forma de pago">
+            <label class="opcion-pago">
+              <input type="radio" name="pago" value="Efectivo">
+              <span>💵 Efectivo</span>
+            </label>
+            <label class="opcion-pago">
+              <input type="radio" name="pago" value="Transferencia">
+              <span>📱 Transferencia</span>
+            </label>
+          </div>
+
+          <!-- Nota que cambia según la forma de pago elegida -->
+          <p class="nota-pago" id="nota-pago" hidden></p>
+        </fieldset>
+
+        <div class="acciones-formulario">
+          <button type="submit" class="btn-principal">Confirmar pedido</button>
+          <button type="button" class="btn-secundario" id="btn-vaciar">Vaciar pedido</button>
+        </div>
+      </form>
+
+      <!-- Mensajes del pedido (los llena JavaScript) -->
+      <div class="mensaje mensaje-error" id="error-pedido" role="alert" hidden></div>
+    </section>
+
+    <!-- =========================================================
+         PEDIDOS REGISTRADOS
+         ========================================================= -->
+    <section class="tarjeta" id="pedidos">
+      <h2>Pedidos registrados <span id="contador-pedidos" class="subtitulo"></span></h2>
+      <p class="subtitulo">Si cancelas un pedido, las unidades vuelven al inventario.</p>
+
+      <div class="lista-pedidos" id="lista-pedidos">
+        <!-- Las tarjetas de pedidos se generan con JavaScript -->
+      </div>
+      <p class="mensaje-vacio" id="pedidos-vacio">Todavía no hay pedidos.</p>
+    </section>
+
+    <!-- =========================================================
+         INVENTARIO (CRUD de productos)
+         ========================================================= -->
+    <section class="tarjeta" id="inventario">
+      <h2 id="titulo-inventario">Inventario: agregar producto</h2>
+      <p class="subtitulo">Aquí se definen los precios fijos que ven los clientes al hacer su pedido.</p>
+
+      <form id="form-producto" autocomplete="off" novalidate>
+        <!-- Campo oculto: guarda el id del producto cuando se está editando -->
+        <input type="hidden" id="producto-id">
+
+        <div class="rejilla">
+          <div class="campo">
+            <label for="nombre">Nombre</label>
+            <input type="text" id="nombre" placeholder="Ej: Arroz Diana 500 g" maxlength="80">
+          </div>
+
+          <div class="campo">
+            <label for="categoria">Categoría</label>
+            <select id="categoria">
+              <option value="">-- Selecciona una categoría --</option>
+              <!-- Las opciones se llenan con JavaScript desde la lista CATEGORIAS -->
+            </select>
+          </div>
+
+          <div class="campo">
+            <label for="precio">Precio (COP)</label>
+            <input type="number" id="precio" placeholder="Ej: 3500" min="0" step="1" inputmode="numeric">
+          </div>
+
+          <div class="campo">
+            <label for="cantidad">Cantidad en bodega</label>
+            <input type="number" id="cantidad" placeholder="Ej: 24" min="0" step="1" inputmode="numeric">
+          </div>
+
+          <div class="acciones-formulario ocupa-todo">
+            <button type="submit" id="btn-guardar" class="btn-principal">Guardar</button>
+            <button type="button" id="btn-cancelar" class="btn-secundario" hidden>Cancelar edición</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="mensaje mensaje-error" id="error-inventario" role="alert" hidden></div>
+
+      <h3 class="subtitulo" style="margin: 1.5rem 0 0.75rem; font-weight: 600;">Productos registrados</h3>
+
+      <!-- Resumen del inventario (lo calcula JavaScript) -->
+      <div class="resumen" aria-label="Resumen del inventario">
+        <div class="resumen-dato">
+          <span class="resumen-etiqueta">Total de productos</span>
+          <strong id="resumen-productos">0</strong>
+        </div>
+        <div class="resumen-dato">
+          <span class="resumen-etiqueta">Unidades en bodega</span>
+          <strong id="resumen-unidades">0</strong>
+        </div>
+        <div class="resumen-dato resumen-destacado">
+          <span class="resumen-etiqueta">Valor total del inventario</span>
+          <strong id="resumen-valor">$0</strong>
+        </div>
+      </div>
+
+      <!-- Buscador: filtra la tabla por nombre o categoría -->
+      <div class="buscador">
+        <label for="buscador" class="visualmente-oculto">Buscar productos</label>
+        <span class="buscador-icono" aria-hidden="true">🔍</span>
+        <input type="search" id="buscador" placeholder="Buscar por nombre o categoría…" autocomplete="off">
+      </div>
+      <p class="resultado-busqueda" id="resultado-busqueda" hidden></p>
+
+      <table class="tabla" id="tabla-productos">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Nombre</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Precio (COP)</th>
+            <th scope="col">Cantidad</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo-tabla"></tbody>
+      </table>
+
+      <p class="mensaje-vacio" id="mensaje-vacio">Aún no hay productos en el inventario.</p>
+    </section>
+
+  </main>
+
+  <!-- Aquí aparecen los mensajes flotantes (los crea JavaScript).
+       aria-live hace que los lectores de pantalla los lean en voz alta. -->
+  <div class="contenedor-toast" id="contenedor-toast" aria-live="polite" aria-atomic="false"></div>
+
+  <footer>
+    <p>Tienda La Esquina · Trabajo universitario - Aplicación CRUD con localStorage</p>
+  </footer>
+
+  <script>
+    /* =========================================================
+       1. CONFIGURACIÓN GENERAL
+       ========================================================= */
+
+    // "Llaves" con las que se guardan los datos en localStorage
+    // (solo se usan en MODO LOCAL, cuando no hay servidor).
+    const CLAVE_PRODUCTOS = 'inventarioTienda';
+    const CLAVE_PEDIDOS   = 'pedidosTienda';
+    const CLAVE_CONTADOR  = 'contadorPedidosTienda';
+
+    // Cada cuánto se recargan los datos del servidor (para ver pedidos nuevos).
+    const RECARGA_MS = 15000;
+
+    // Un producto con MENOS de estas unidades se marca en naranja con ⚠️.
+    const STOCK_MINIMO = 5;
+
+    // Cuánto dura visible el mensaje flotante (en milisegundos).
+    const DURACION_TOAST_MS = 3500;
+
+    // Categorías disponibles en la tienda (se usan en los dos formularios).
+    const CATEGORIAS = [
+      'Abarrotes', 'Bebidas', 'Lácteos', 'Panadería', 'Frutas y verduras',
+      'Carnes y embutidos', 'Snacks y dulces', 'Aseo y hogar', 'Cuidado personal', 'Otros'
+    ];
+
+    // Productos con precios PREESTABLECIDOS para el modo local.
+    // (En modo servidor, los productos iniciales los crea server.js).
+    const PRODUCTOS_INICIALES = [
+      { nombre: 'Arroz Diana 500 g',          categoria: 'Abarrotes',          precio: 3500,  cantidad: 40 },
+      { nombre: 'Aceite Premier 1 L',         categoria: 'Abarrotes',          precio: 12900, cantidad: 15 },
+      { nombre: 'Panela por libra',           categoria: 'Abarrotes',          precio: 3200,  cantidad: 25 },
+      { nombre: 'Gaseosa Postobón 1.5 L',     categoria: 'Bebidas',            precio: 5200,  cantidad: 20 },
+      { nombre: 'Agua Cristal 600 ml',        categoria: 'Bebidas',            precio: 1800,  cantidad: 36 },
+      { nombre: 'Leche entera Alpina 1 L',    categoria: 'Lácteos',            precio: 4500,  cantidad: 30 },
+      { nombre: 'Queso campesino 250 g',      categoria: 'Lácteos',            precio: 6800,  cantidad: 10 },
+      { nombre: 'Pan tajado Bimbo',           categoria: 'Panadería',          precio: 6900,  cantidad: 12 },
+      { nombre: 'Huevos AA x 12',             categoria: 'Frutas y verduras',  precio: 7800,  cantidad: 18 },
+      { nombre: 'Salchichón Zenú 225 g',      categoria: 'Carnes y embutidos', precio: 5600,  cantidad: 14 },
+      { nombre: 'Papas Margarita 105 g',      categoria: 'Snacks y dulces',    precio: 4200,  cantidad: 24 },
+      { nombre: 'Jabón Rey en barra',         categoria: 'Aseo y hogar',       precio: 2900,  cantidad: 30 },
+      { nombre: 'Papel higiénico Familia x4', categoria: 'Aseo y hogar',       precio: 8900,  cantidad: 16 },
+      { nombre: 'Crema dental Colgate 75 ml', categoria: 'Cuidado personal',   precio: 5400,  cantidad: 20 }
+    ];
+
+    // Formatea un valor en pesos colombianos: 4500 -> "$4.500".
+    // Se pone el punto cada 3 cifras con una expresión regular,
+    // así el resultado es igual en todos los navegadores.
+    function formatoPesos(valor) {
+      const numero = Math.round(Number(valor) || 0);
+      const signo = numero < 0 ? '-' : '';
+      const conPuntos = String(Math.abs(numero)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return `${signo}$${conPuntos}`;
+    }
+
+    // Formatea cantidades con punto de miles: 1500 -> "1.500".
+    function formatoNumero(valor) {
+      return String(Math.round(Number(valor) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    // Formateador de fecha y hora en español de Colombia.
+    const formatoFecha = new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'medium', timeStyle: 'short'
+    });
+
+    // Atajo para buscar elementos por id.
+    const $ = (id) => document.getElementById(id);
+
+    // Estado de la aplicación: copia en memoria de los datos
+    // que vienen del servidor o de localStorage.
+    const estado = {
+      modo: 'local',     // 'servidor' o 'local'
+      productos: [],
+      pedidos: []
+    };
+
+
+    /* =========================================================
+       2. MENSAJES EN PANTALLA (errores en rojo, éxito en verde)
+       ========================================================= */
+
+    // Muestra uno o varios mensajes dentro de una caja (error o éxito).
+    // "mensajes" puede ser un texto o un arreglo de textos.
+    function mostrarMensaje(caja, mensajes) {
+      const lista = Array.isArray(mensajes) ? mensajes : [mensajes];
+      caja.innerHTML = '';
+
+      if (lista.length === 1) {
+        const p = document.createElement('p');
+        p.textContent = lista[0];        // textContent evita inyectar HTML
+        caja.appendChild(p);
+      } else {
+        const ul = document.createElement('ul');
+        lista.forEach(function (texto) {
+          const li = document.createElement('li');
+          li.textContent = texto;
+          ul.appendChild(li);
+        });
+        caja.appendChild(ul);
+      }
+      caja.hidden = false;
+    }
+
+    // Oculta una caja de mensaje.
+    function ocultarMensaje(caja) {
+      caja.hidden = true;
+      caja.innerHTML = '';
+    }
+
+    // Muestra en la caja los errores de una excepción.
+    function mostrarErrorDe(caja, error) {
+      console.error(error);
+      mostrarMensaje(caja, error.errores || ['Ocurrió un error inesperado. Intenta de nuevo.']);
+    }
+
+    // Marca un campo con borde rojo.
+    function marcarInvalido(campo) {
+      campo.classList.add('invalido');
+      campo.setAttribute('aria-invalid', 'true');
+    }
+
+    // Quita el borde rojo de todos los campos de un formulario.
+    function limpiarInvalidos(formulario) {
+      formulario.querySelectorAll('.invalido').forEach(function (campo) {
+        campo.classList.remove('invalido');
+        campo.removeAttribute('aria-invalid');
+      });
+    }
+
+    // Cuando el usuario corrige un campo, se le quita el borde rojo.
+    // Si ya no quedan campos con error, se oculta el mensaje rojo.
+    function activarLimpiezaAlCorregir(formulario, cajaError) {
+      function limpiar(evento) {
+        // En los radios el borde rojo está en el contenedor del grupo.
+        const campo = evento.target.closest('.invalido') || evento.target;
+        campo.classList.remove('invalido');
+        campo.removeAttribute('aria-invalid');
+        if (!formulario.querySelector('.invalido')) {
+          ocultarMensaje(cajaError);
+        }
+      }
+      formulario.addEventListener('input', limpiar);
+      formulario.addEventListener('change', limpiar);
+    }
+
+    // Convierte caracteres especiales (<, >, &, comillas) en texto seguro
+    // antes de insertarlos con innerHTML.
+    function escaparHTML(texto) {
+      const div = document.createElement('div');
+      div.textContent = String(texto);
+      return div.innerHTML;
+    }
+
+    // ---------- MENSAJE FLOTANTE (toast) ----------
+    // Muestra un aviso pequeño en la esquina que se cierra solo.
+    // tipo: 'exito' (agregar), 'edicion' (editar) o 'borrado' (eliminar).
+    function mostrarToast(texto, tipo) {
+      const iconos = { exito: '✅', edicion: '✏️', borrado: '🗑️' };
+      const contenedor = $('contenedor-toast');
+
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${tipo}`;
+      toast.innerHTML = `
+        <span class="toast-icono" aria-hidden="true">${iconos[tipo] || 'ℹ️'}</span>
+        <span class="toast-texto"></span>
+        <button type="button" class="toast-cerrar" aria-label="Cerrar mensaje">×</button>
+      `;
+      // El texto se pone con textContent para no interpretar HTML del nombre.
+      toast.querySelector('.toast-texto').textContent = texto;
+      contenedor.appendChild(toast);
+
+      // Se cierra con una animación de salida y luego se quita de la página.
+      let cerrado = false;
+      function cerrar() {
+        if (cerrado) return;
+        cerrado = true;
+        toast.classList.add('saliendo');
+        toast.addEventListener('animationend', () => toast.remove(), { once: true });
+        setTimeout(() => toast.remove(), 400);   // Por si la animación no ocurre
+      }
+
+      toast.querySelector('.toast-cerrar').addEventListener('click', cerrar);
+
+      // Se cierra solo; si el mouse está encima, espera a que salga.
+      let temporizador = setTimeout(cerrar, DURACION_TOAST_MS);
+      toast.addEventListener('mouseenter', () => clearTimeout(temporizador));
+      toast.addEventListener('mouseleave', () => { temporizador = setTimeout(cerrar, 1500); });
+
+      // Máximo 3 mensajes a la vez: se quita el más viejo.
+      const visibles = contenedor.querySelectorAll('.toast:not(.saliendo)');
+      if (visibles.length > 3) visibles[0].remove();
+    }
+
+    // Desactiva un botón mientras se espera una respuesta,
+    // para evitar que el usuario envíe dos veces lo mismo.
+    async function conBotonOcupado(boton, accion) {
+      const textoOriginal = boton.textContent;
+      boton.disabled = true;
+      boton.textContent = 'Procesando…';
+      try {
+        return await accion();
+      } finally {
+        boton.disabled = false;
+        boton.textContent = textoOriginal;
+      }
+    }
+
+
+    /* =========================================================
+       3. CAPA DE DATOS
+       ---------------------------------------------------------
+       La página puede trabajar de dos formas, con las MISMAS funciones:
+        - MODO SERVIDOR: los datos se guardan en el servidor Node.js
+          (archivo datos/tienda.json) y los ven todos los dispositivos.
+        - MODO LOCAL: si se abre el index.html sin servidor,
+          los datos se guardan en el localStorage de este navegador.
+       ========================================================= */
+
+    // Error con una lista de mensajes para mostrar al usuario.
+    class ErrorTienda extends Error {
+      constructor(errores) {
+        const lista = Array.isArray(errores) ? errores : [errores];
+        super(lista.join(' '));
+        this.errores = lista;
+      }
+    }
+
+    // ---------- 3.1 MODO SERVIDOR (API REST con fetch) ----------
+
+    // Hace una petición a la API y devuelve la respuesta ya convertida de JSON.
+    // Si el servidor responde con error, lanza ErrorTienda con sus mensajes.
+    async function pedirAPI(metodo, ruta, cuerpo) {
+      let respuesta;
+      try {
+        respuesta = await fetch('/api' + ruta, {
+          method: metodo,
+          headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
+          body: cuerpo ? JSON.stringify(cuerpo) : undefined
+        });
+      } catch (error) {
+        throw new ErrorTienda('No se pudo conectar con el servidor. Revisa que esté encendido.');
+      }
+
+      // 204 = "sin contenido" (por ejemplo, después de eliminar).
+      if (respuesta.status === 204) return null;
+
+      let datos = null;
+      try {
+        datos = await respuesta.json();
+      } catch (error) {
+        // La respuesta no era JSON; se maneja abajo.
+      }
+
+      if (!respuesta.ok) {
+        throw new ErrorTienda((datos && datos.errores) || [`Error del servidor (código ${respuesta.status}).`]);
+      }
+      return datos;
+    }
+
+    const almacenServidor = {
+      listarProductos:    ()         => pedirAPI('GET',    '/productos'),
+      crearProducto:      (datos)    => pedirAPI('POST',   '/productos', datos),
+      actualizarProducto: (id, datos) => pedirAPI('PUT',   '/productos/' + encodeURIComponent(id), datos),
+      eliminarProducto:   (id)       => pedirAPI('DELETE', '/productos/' + encodeURIComponent(id)),
+      listarPedidos:      ()         => pedirAPI('GET',    '/pedidos'),
+      crearPedido:        (datos)    => pedirAPI('POST',   '/pedidos', datos),
+      cancelarPedido:     (id)       => pedirAPI('DELETE', '/pedidos/' + encodeURIComponent(id))
+    };
+
+    // ---------- 3.2 MODO LOCAL (localStorage) ----------
+
+    // Lee una lista guardada. localStorage solo guarda texto,
+    // por eso se convierte con JSON.parse.
+    function leerLista(clave) {
+      try {
+        const texto = localStorage.getItem(clave);
+        const lista = texto ? JSON.parse(texto) : [];
+        return Array.isArray(lista) ? lista : [];
+      } catch (error) {
+        console.error('Error al leer localStorage:', error);
+        throw new ErrorTienda('No se pudieron leer los datos guardados en el navegador.');
+      }
+    }
+
+    // Guarda una lista convirtiéndola a texto con JSON.stringify.
+    function guardarLista(clave, lista) {
+      try {
+        localStorage.setItem(clave, JSON.stringify(lista));
+      } catch (error) {
+        console.error('Error al guardar en localStorage:', error);
+        throw new ErrorTienda('No se pudieron guardar los datos en el navegador. Revisa que el almacenamiento no esté lleno o bloqueado.');
+      }
+    }
+
+    // Genera un identificador único (fecha actual + número aleatorio).
+    function generarId() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    }
+
+    // Lee los productos. La PRIMERA vez carga los de precios preestablecidos.
+    function leerProductosLocal() {
+      let existe = false;
+      try {
+        existe = localStorage.getItem(CLAVE_PRODUCTOS) !== null;
+      } catch (error) {
+        throw new ErrorTienda('Este navegador no permite guardar datos (localStorage bloqueado).');
+      }
+      if (!existe) {
+        const iniciales = PRODUCTOS_INICIALES.map(p => ({ id: generarId(), ...p }));
+        guardarLista(CLAVE_PRODUCTOS, iniciales);
+        return iniciales;
+      }
+      return leerLista(CLAVE_PRODUCTOS);
+    }
+
+    // Las funciones son "async" para que se usen igual que las del servidor.
+    const almacenLocal = {
+      async listarProductos() {
+        return leerProductosLocal();
+      },
+
+      async crearProducto(datos) {
+        const productos = leerProductosLocal();
+        const nuevo = { id: generarId(), ...datos };
+        productos.push(nuevo);
+        guardarLista(CLAVE_PRODUCTOS, productos);
+        return nuevo;
+      },
+
+      async actualizarProducto(id, datos) {
+        const productos = leerProductosLocal();
+        const producto = productos.find(p => p.id === id);
+        if (!producto) throw new ErrorTienda('El producto ya no existe.');
+        Object.assign(producto, datos);
+        guardarLista(CLAVE_PRODUCTOS, productos);
+        return producto;
+      },
+
+      async eliminarProducto(id) {
+        const productos = leerProductosLocal();
+        if (!productos.some(p => p.id === id)) throw new ErrorTienda('El producto ya no existe.');
+        guardarLista(CLAVE_PRODUCTOS, productos.filter(p => p.id !== id));
+        return null;
+      },
+
+      async listarPedidos() {
+        return leerLista(CLAVE_PEDIDOS);
+      },
+
+      // Crea el pedido, revisa que haya unidades y las descuenta.
+      async crearPedido({ cliente, metodoPago, items: pedidoItems }) {
+        const productos = leerProductosLocal();
+        const errores = [];
+        const items = [];
+
+        pedidoItems.forEach(function ({ productoId, cantidad }) {
+          const producto = productos.find(p => p.id === productoId);
+          if (!producto) {
+            errores.push('Un producto de tu pedido ya no existe en el inventario.');
+          } else if (cantidad > producto.cantidad) {
+            errores.push(`Solo quedan ${producto.cantidad} unidad(es) de "${producto.nombre}".`);
+          } else {
+            items.push({
+              productoId,
+              nombre: producto.nombre,
+              precio: producto.precio,       // "Foto" del precio del momento
+              cantidad,
+              subtotal: producto.precio * cantidad
+            });
+          }
+        });
+        if (errores.length > 0) throw new ErrorTienda(errores);
+
+        const inventarioOriginal = JSON.parse(JSON.stringify(productos));
+        items.forEach(i => { productos.find(p => p.id === i.productoId).cantidad -= i.cantidad; });
+
+        let numero = 1;
+        try {
+          numero = (parseInt(localStorage.getItem(CLAVE_CONTADOR), 10) || 0) + 1;
+        } catch (error) { /* se usa 1 */ }
+
+        const pedido = {
+          id: generarId(),
+          numero,
+          fecha: new Date().toISOString(),
+          cliente,
+          metodoPago,
+          items,
+          total: items.reduce((suma, i) => suma + i.subtotal, 0)
+        };
+        const pedidos = leerLista(CLAVE_PEDIDOS);
+        pedidos.push(pedido);
+
+        // Si falla guardar el pedido, el inventario vuelve a como estaba.
+        guardarLista(CLAVE_PRODUCTOS, productos);
+        try {
+          guardarLista(CLAVE_PEDIDOS, pedidos);
+          localStorage.setItem(CLAVE_CONTADOR, String(numero));
+        } catch (error) {
+          try { guardarLista(CLAVE_PRODUCTOS, inventarioOriginal); } catch (e) { /* nada más que hacer */ }
+          throw error instanceof ErrorTienda ? error : new ErrorTienda('No se pudo guardar el pedido.');
+        }
+        return pedido;
+      },
+
+      // Cancela un pedido y devuelve las unidades al inventario.
+      async cancelarPedido(id) {
+        const pedidos = leerLista(CLAVE_PEDIDOS);
+        const pedido = pedidos.find(p => p.id === id);
+        if (!pedido) throw new ErrorTienda('El pedido ya no existe.');
+
+        const productos = leerProductosLocal();
+        pedido.items.forEach(function (item) {
+          const producto = productos.find(p => p.id === item.productoId);
+          if (producto) producto.cantidad += item.cantidad;
+        });
+        guardarLista(CLAVE_PEDIDOS, pedidos.filter(p => p.id !== id));
+        guardarLista(CLAVE_PRODUCTOS, productos);
+        return null;
+      }
+    };
+
+    // Almacén que se está usando (se decide al iniciar la página).
+    let almacen = almacenLocal;
+
+    // ---------- 3.3 RECARGAR DATOS ----------
+
+    // Trae productos y pedidos del almacén actual y redibuja la página.
+    // Devuelve true si todo salió bien.
+    async function recargarDatos() {
+      try {
+        const [productos, pedidos] = await Promise.all([
+          almacen.listarProductos(),
+          almacen.listarPedidos()
+        ]);
+        estado.productos = productos;
+        estado.pedidos = pedidos;
+        if (estado.modo === 'servidor') mostrarEstadoConexion('conectado');
+        actualizarVistas();
+        return true;
+      } catch (error) {
+        console.error(error);
+        if (estado.modo === 'servidor') {
+          mostrarEstadoConexion('sin-conexion');
+        } else {
+          mostrarErrorDe(errorPedido, error);
+        }
+        return false;
+      }
+    }
+
+    // Cambia el indicador del menú según dónde se guardan los datos.
+    function mostrarEstadoConexion(tipo) {
+      const indicador = $('estado-conexion');
+      const textos = {
+        'conectado':    ['● Servidor',     'Conectado: los datos se guardan en el servidor y los ven todos los dispositivos.'],
+        'local':        ['● Modo local',   'Sin servidor: los datos se guardan solo en este navegador (localStorage).'],
+        'sin-conexion': ['● Sin conexión', 'No se pudo contactar al servidor. Revisa que esté encendido.']
+      };
+      indicador.className = 'estado-conexion ' + tipo;
+      indicador.textContent = textos[tipo][0];
+      indicador.title = textos[tipo][1];
+    }
+
+
+    /* =========================================================
+       4. MENÚ SUPERIOR (abrir / cerrar en celular)
+       ========================================================= */
+
+    const menuBoton   = $('menu-boton');
+    const menuEnlaces = $('menu-enlaces');
+
+    // Abre o cierra el menú al tocar el botón ☰.
+    menuBoton.addEventListener('click', function () {
+      const abierto = menuEnlaces.classList.toggle('abierto');
+      menuBoton.setAttribute('aria-expanded', String(abierto));
+      menuBoton.textContent = abierto ? '✕' : '☰';
+    });
+
+    // Al elegir una opción, el menú se cierra solo.
+    menuEnlaces.addEventListener('click', function (evento) {
+      if (evento.target.closest('a')) {
+        menuEnlaces.classList.remove('abierto');
+        menuBoton.setAttribute('aria-expanded', 'false');
+        menuBoton.textContent = '☰';
+      }
+    });
+
+
+    /* =========================================================
+       5. INVENTARIO - CRUD DE PRODUCTOS
+       ========================================================= */
+
+    const formProducto   = $('form-producto');
+    const inputId        = $('producto-id');
+    const inputNombre    = $('nombre');
+    const inputCategoria = $('categoria');
+    const inputPrecio    = $('precio');
+    const inputCantidad  = $('cantidad');
+    const tituloInv      = $('titulo-inventario');
+    const btnGuardar     = $('btn-guardar');
+    const btnCancelar    = $('btn-cancelar');
+    const tablaProductos = $('tabla-productos');
+    const cuerpoTabla    = $('cuerpo-tabla');
+    const mensajeVacio   = $('mensaje-vacio');
+    const errorInv       = $('error-inventario');
+    const buscador       = $('buscador');
+    const resultadoBusq  = $('resultado-busqueda');
+
+    // Llena el <select> de categorías del inventario con la lista CATEGORIAS.
+    CATEGORIAS.forEach(function (cat) {
+      inputCategoria.add(new Option(cat, cat));
+    });
+
+    // ----- Buscador -----
+
+    // Pasa un texto a minúsculas y sin tildes, para comparar fácil:
+    // "Lácteos" -> "lacteos".
+    function normalizar(texto) {
+      return String(texto).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    }
+
+    // Devuelve los productos cuyo nombre o categoría contienen lo buscado.
+    function filtrarProductos(productos) {
+      const termino = normalizar(buscador.value);
+      if (!termino) return productos;
+      return productos.filter(p =>
+        normalizar(p.nombre).includes(termino) || normalizar(p.categoria).includes(termino)
+      );
+    }
+
+    // Cada vez que se escribe en el buscador se vuelve a dibujar la tabla.
+    buscador.addEventListener('input', listarProductos);
+
+    // ----- Resumen -----
+
+    // Calcula el total de productos, las unidades y el valor del inventario
+    // (precio × cantidad de cada producto, sumado).
+    function actualizarResumen(productos) {
+      const unidades = productos.reduce((suma, p) => suma + p.cantidad, 0);
+      const valor    = productos.reduce((suma, p) => suma + p.precio * p.cantidad, 0);
+
+      $('resumen-productos').textContent = formatoNumero(productos.length);
+      $('resumen-unidades').textContent  = formatoNumero(unidades);
+      $('resumen-valor').textContent     = formatoPesos(valor);
+    }
+
+    // ----- R: LISTAR -----
+    // Dibuja la tabla del inventario aplicando el filtro del buscador.
+    function listarProductos() {
+      const todos = estado.productos;
+      const productos = filtrarProductos(todos);
+
+      actualizarResumen(todos);   // El resumen siempre es de TODO el inventario
+      cuerpoTabla.innerHTML = '';
+
+      // Texto "Mostrando X de Y" solo cuando hay una búsqueda activa.
+      const buscando = normalizar(buscador.value) !== '';
+      resultadoBusq.hidden = !buscando || todos.length === 0;
+      resultadoBusq.textContent = `Mostrando ${productos.length} de ${todos.length} productos.`;
+
+      // Mensaje cuando no hay nada que mostrar.
+      if (todos.length === 0) {
+        mensajeVacio.textContent = 'Aún no hay productos en el inventario.';
+      } else if (productos.length === 0) {
+        mensajeVacio.textContent = `No hay productos que coincidan con "${buscador.value.trim()}".`;
+      }
+      mensajeVacio.hidden = productos.length > 0;
+      tablaProductos.hidden = productos.length === 0;
+
+      productos.forEach(function (producto, indice) {
+        // Si quedan MENOS de STOCK_MINIMO unidades, la fila se pinta de naranja
+        // y la cantidad lleva el ícono ⚠️. Si llega a 0 dice "agotado".
+        const stockBajo = producto.cantidad < STOCK_MINIMO;
+        const celdaCantidad = stockBajo
+          ? `<span class="stock-bajo" title="Pocas unidades: menos de ${STOCK_MINIMO}">
+               <span aria-hidden="true">⚠️</span>
+               ${formatoNumero(producto.cantidad)}
+               ${producto.cantidad === 0 ? '<span class="etiqueta-agotado">agotado</span>' : ''}
+               <span class="visualmente-oculto">(pocas unidades)</span>
+             </span>`
+          : formatoNumero(producto.cantidad);
+
+        const fila = document.createElement('tr');
+        if (stockBajo) fila.className = 'fila-stock-bajo';
+        fila.innerHTML = `
+          <td data-label="#">${indice + 1}</td>
+          <td data-label="Nombre">${escaparHTML(producto.nombre)}</td>
+          <td data-label="Categoría">${escaparHTML(producto.categoria)}</td>
+          <td data-label="Precio">${formatoPesos(producto.precio)}</td>
+          <td data-label="Cantidad">${celdaCantidad}</td>
+          <td data-label="Acciones">
+            <div class="celda-acciones">
+              <button type="button" class="btn-pequeno btn-editar" data-id="${escaparHTML(producto.id)}">Editar</button>
+              <button type="button" class="btn-pequeno btn-eliminar" data-id="${escaparHTML(producto.id)}">Eliminar</button>
+            </div>
+          </td>
+        `;
+        cuerpoTabla.appendChild(fila);
+      });
+    }
+
+    // ----- UN SOLO FORMULARIO PARA CREAR Y EDITAR -----
+    // Cambia los textos y botones según el modo:
+    //  - 'crear':  título "agregar", botón "Guardar" y sin botón cancelar.
+    //  - 'editar': título "editar", botón "Actualizar" y aparece "Cancelar edición".
+    function cambiarModoFormulario(modo) {
+      const editando = modo === 'editar';
+      tituloInv.textContent  = editando ? 'Inventario: editar producto' : 'Inventario: agregar producto';
+      btnGuardar.textContent = editando ? 'Actualizar' : 'Guardar';
+      btnCancelar.hidden     = !editando;
+    }
+
+    // ----- U: EDITAR (paso 1) -----
+    // Carga el producto en el formulario. El id va en el campo oculto:
+    // así el formulario "sabe" que está editando.
+    function cargarProductoEnFormulario(id) {
+      const producto = estado.productos.find(p => p.id === id);
+      if (!producto) {
+        mostrarMensaje(errorInv, 'El producto que intentas editar ya no existe.');
+        recargarDatos();
+        return;
+      }
+
+      limpiarInvalidos(formProducto);
+      ocultarMensaje(errorInv);
+
+      inputId.value        = producto.id;
+      inputNombre.value    = producto.nombre;
+      inputCategoria.value = producto.categoria;
+      inputPrecio.value    = producto.precio;
+      inputCantidad.value  = producto.cantidad;
+
+      cambiarModoFormulario('editar');
+
+      $('inventario').scrollIntoView({ behavior: 'smooth' });
+      inputNombre.focus({ preventScroll: true });
+    }
+
+    // ----- D: ELIMINAR -----
+    async function eliminarProducto(id) {
+      const producto = estado.productos.find(p => p.id === id);
+      if (!producto) return recargarDatos();
+
+      // confirm se mantiene porque es una pregunta, no un error.
+      if (!confirm(`¿Seguro que deseas eliminar "${producto.nombre}"?`)) return;
+
+      try {
+        await almacen.eliminarProducto(id);
+        if (inputId.value === id) reiniciarFormProducto();
+        mostrarToast(`Producto eliminado: ${producto.nombre}`, 'borrado');
+      } catch (error) {
+        mostrarErrorDe(errorInv, error);
+      }
+      await recargarDatos();
+    }
+
+    // Lee y valida el formulario del inventario.
+    // Devuelve los datos o null si hay errores (que se muestran en rojo).
+    function leerFormProducto() {
+      limpiarInvalidos(formProducto);
+      ocultarMensaje(errorInv);
+      const errores = [];
+
+      const nombre      = inputNombre.value.trim().replace(/\s+/g, ' ');
+      const categoria   = inputCategoria.value;
+      const textoPrecio = inputPrecio.value.trim();
+      const textoCant   = inputCantidad.value.trim();
+
+      // Nombre: mínimo 2 letras (\p{L} cuenta letras, incluidas tildes y ñ).
+      if ((nombre.match(/\p{L}/gu) || []).length < 2) {
+        errores.push('El nombre debe tener mínimo 2 letras.');
+        marcarInvalido(inputNombre);
+      }
+
+      // Categoría: obligatoria.
+      if (categoria === '') {
+        errores.push('Debes elegir una categoría.');
+        marcarInvalido(inputCategoria);
+      }
+
+      // Precio: obligatorio, entero y no negativo.
+      const precio = Number(textoPrecio);
+      if (textoPrecio === '' || inputPrecio.validity.badInput) {
+        errores.push('Ingresa el precio del producto.');
+        marcarInvalido(inputPrecio);
+      } else if (precio < 0) {
+        errores.push('El precio no puede ser negativo.');
+        marcarInvalido(inputPrecio);
+      } else if (!Number.isInteger(precio)) {
+        errores.push('El precio debe ser un valor entero (sin centavos).');
+        marcarInvalido(inputPrecio);
+      }
+
+      // Cantidad: obligatoria, entera y no negativa.
+      const cantidad = Number(textoCant);
+      if (textoCant === '' || inputCantidad.validity.badInput) {
+        errores.push('Ingresa la cantidad del producto.');
+        marcarInvalido(inputCantidad);
+      } else if (cantidad < 0) {
+        errores.push('La cantidad no puede ser negativa.');
+        marcarInvalido(inputCantidad);
+      } else if (!Number.isInteger(cantidad)) {
+        errores.push('La cantidad debe ser un número entero.');
+        marcarInvalido(inputCantidad);
+      }
+
+      if (errores.length > 0) {
+        mostrarMensaje(errorInv, errores);
+        formProducto.querySelector('.invalido').focus();
+        return null;
+      }
+      return { nombre, categoria, precio, cantidad };
+    }
+
+    // Deja el formulario vacío y lo regresa al modo "crear".
+    // Se usa al terminar de guardar y al presionar "Cancelar edición".
+    function reiniciarFormProducto() {
+      formProducto.reset();
+      inputId.value = '';   // Sin id en el campo oculto = modo crear
+      cambiarModoFormulario('crear');
+      limpiarInvalidos(formProducto);
+      ocultarMensaje(errorInv);
+    }
+
+    // ----- C: CREAR  y  U: EDITAR (paso 2) -----
+    // El MISMO formulario crea o actualiza:
+    // si el campo oculto tiene un id se actualiza ese producto;
+    // si está vacío se crea uno nuevo.
+    formProducto.addEventListener('submit', async function (evento) {
+      evento.preventDefault();
+      const datos = leerFormProducto();
+      if (!datos) return;
+
+      const id = inputId.value;
+      await conBotonOcupado(btnGuardar, async function () {
+        try {
+          if (id) {
+            await almacen.actualizarProducto(id, datos);
+            mostrarToast(`Producto actualizado: ${datos.nombre}`, 'edicion');
+          } else {
+            await almacen.crearProducto(datos);
+            mostrarToast(`Producto agregado: ${datos.nombre}`, 'exito');
+          }
+          reiniciarFormProducto();
+        } catch (error) {
+          mostrarErrorDe(errorInv, error);
+        }
+      });
+      // conBotonOcupado devuelve el texto original al botón;
+      // se ajusta por si el formulario cambió de modo.
+      cambiarModoFormulario(inputId.value ? 'editar' : 'crear');
+      await recargarDatos();
+    });
+
+    btnCancelar.addEventListener('click', reiniciarFormProducto);
+
+    // Delegación de eventos: un solo "click" para todos los botones de la tabla.
+    cuerpoTabla.addEventListener('click', function (evento) {
+      const boton = evento.target.closest('button');
+      if (!boton) return;
+      if (boton.classList.contains('btn-editar'))   cargarProductoEnFormulario(boton.dataset.id);
+      if (boton.classList.contains('btn-eliminar')) eliminarProducto(boton.dataset.id);
+    });
+
+    activarLimpiezaAlCorregir(formProducto, errorInv);
+
+
+    /* =========================================================
+       6. PEDIDO - SELECCIÓN DE PRODUCTOS (CARRITO)
+       ========================================================= */
+
+    const formPedido       = $('form-pedido');
+    const selCategoria     = $('pedido-categoria');
+    const selProducto      = $('pedido-producto');
+    const inputCantPedido  = $('pedido-cantidad');
+    const btnAgregar       = $('btn-agregar');
+    const btnConfirmar     = formPedido.querySelector('button[type="submit"]');
+    const infoProducto     = $('info-producto');
+    const cuerpoCarrito    = $('cuerpo-carrito');
+    const tablaCarrito     = $('tabla-carrito');
+    const carritoVacio     = $('carrito-vacio');
+    const totalPedido      = $('total-pedido');
+    const opcionesPago     = $('opciones-pago');
+    const notaPago         = $('nota-pago');
+    const errorPedido      = $('error-pedido');
+
+    // El carrito vive en memoria mientras se arma el pedido.
+    // Cada elemento guarda solo el id del producto y la cantidad;
+    // el precio SIEMPRE se toma del inventario (precio preestablecido).
+    let carrito = [];
+
+    // Busca un producto del inventario por su id.
+    function buscarProducto(id) {
+      return estado.productos.find(p => p.id === id);
+    }
+
+    // Cuántas unidades de un producto ya están en el carrito.
+    function cantidadEnCarrito(productoId) {
+      const item = carrito.find(i => i.productoId === productoId);
+      return item ? item.cantidad : 0;
+    }
+
+    // Llena el select de categorías del pedido solo con las categorías
+    // que tienen productos en el inventario. Conserva la opción elegida.
+    function llenarCategoriasPedido() {
+      const seleccionActual = selCategoria.value;
+      const conProductos = CATEGORIAS.filter(cat => estado.productos.some(p => p.categoria === cat));
+
+      selCategoria.innerHTML = '<option value="">-- Elige --</option>';
+      conProductos.forEach(cat => selCategoria.add(new Option(cat, cat)));
+
+      if (conProductos.includes(seleccionActual)) selCategoria.value = seleccionActual;
+      llenarProductosPedido();
+    }
+
+    // Llena el select de productos según la categoría elegida.
+    // Los productos agotados aparecen pero no se pueden elegir.
+    function llenarProductosPedido() {
+      const seleccionActual = selProducto.value;
+      const categoria = selCategoria.value;
+
+      if (!categoria) {
+        selProducto.innerHTML = '<option value="">-- Primero elige una categoría --</option>';
+        selProducto.disabled = true;
+        mostrarInfoProducto();
+        return;
+      }
+
+      const productos = estado.productos.filter(p => p.categoria === categoria);
+      selProducto.innerHTML = '<option value="">-- Elige un producto --</option>';
+
+      productos.forEach(function (p) {
+        const disponibles = p.cantidad - cantidadEnCarrito(p.id);
+        const texto = disponibles > 0
+          ? `${p.nombre} — ${formatoPesos(p.precio)}`
+          : `${p.nombre} — agotado`;
+        const opcion = new Option(texto, p.id);
+        opcion.disabled = disponibles <= 0;
+        selProducto.add(opcion);
+      });
+
+      selProducto.disabled = false;
+      const sigueDisponible = [...selProducto.options].some(o => o.value === seleccionActual && !o.disabled);
+      if (seleccionActual && sigueDisponible) selProducto.value = seleccionActual;
+      mostrarInfoProducto();
+    }
+
+    // Muestra el precio fijo, las unidades disponibles y el subtotal
+    // del producto elegido. El cliente no escribe el precio.
+    function mostrarInfoProducto() {
+      const producto = selProducto.value ? buscarProducto(selProducto.value) : null;
+      if (!producto) {
+        infoProducto.hidden = true;
+        return;
+      }
+      const disponibles = producto.cantidad - cantidadEnCarrito(producto.id);
+      const cantidad = Math.max(0, parseInt(inputCantPedido.value, 10) || 0);
+
+      $('info-precio').textContent      = formatoPesos(producto.precio);
+      $('info-disponibles').textContent = formatoNumero(disponibles);
+      $('info-subtotal').textContent    = formatoPesos(producto.precio * cantidad);
+      infoProducto.hidden = false;
+    }
+
+    // Agrega el producto elegido al carrito con la cantidad indicada.
+    // Si el producto ya estaba, se suman las cantidades.
+    function agregarAlCarrito() {
+      ocultarMensaje(errorPedido);
+      [selCategoria, selProducto, inputCantPedido].forEach(c => {
+        c.classList.remove('invalido');
+        c.removeAttribute('aria-invalid');
+      });
+      const errores = [];
+
+      if (!selCategoria.value) {
+        errores.push('Elige una categoría.');
+        marcarInvalido(selCategoria);
+      }
+
+      const producto = selProducto.value ? buscarProducto(selProducto.value) : null;
+      if (selCategoria.value && !producto) {
+        errores.push('Elige un producto.');
+        marcarInvalido(selProducto);
+      }
+
+      const textoCant = inputCantPedido.value.trim();
+      const cantidad = Number(textoCant);
+      if (textoCant === '' || inputCantPedido.validity.badInput || !Number.isInteger(cantidad) || cantidad < 1) {
+        errores.push('La cantidad debe ser un número entero mayor o igual a 1.');
+        marcarInvalido(inputCantPedido);
+      } else if (producto) {
+        // No se puede pedir más de lo que hay en el inventario.
+        const disponibles = producto.cantidad - cantidadEnCarrito(producto.id);
+        if (cantidad > disponibles) {
+          errores.push(`Solo hay ${disponibles} unidad(es) disponibles de "${producto.nombre}".`);
+          marcarInvalido(inputCantPedido);
+        }
+      }
+
+      if (errores.length > 0) {
+        mostrarMensaje(errorPedido, errores);
+        return;
+      }
+
+      const existente = carrito.find(i => i.productoId === producto.id);
+      if (existente) {
+        existente.cantidad += cantidad;
+      } else {
+        carrito.push({ productoId: producto.id, cantidad });
+      }
+
+      // Se deja listo para agregar otro producto.
+      inputCantPedido.value = 1;
+      selProducto.value = '';
+      renderCarrito();
+      llenarProductosPedido();
+    }
+
+    // Dibuja la tabla del carrito y calcula el total.
+    // Si un producto fue borrado del inventario, se quita del carrito.
+    function renderCarrito() {
+      const productos = estado.productos;
+      const antes = carrito.length;
+      carrito = carrito.filter(i => productos.some(p => p.id === i.productoId));
+      if (carrito.length < antes) {
+        mostrarMensaje(errorPedido, 'Algunos productos de tu pedido ya no están disponibles y se quitaron.');
+      }
+
+      cuerpoCarrito.innerHTML = '';
+      let total = 0;
+
+      carrito.forEach(function (item) {
+        const producto = productos.find(p => p.id === item.productoId);
+        const subtotal = producto.precio * item.cantidad;
+        total += subtotal;
+
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+          <td data-label="Producto">${escaparHTML(producto.nombre)}</td>
+          <td data-label="Precio">${formatoPesos(producto.precio)}</td>
+          <td data-label="Cantidad">${formatoNumero(item.cantidad)}</td>
+          <td data-label="Subtotal"><strong>${formatoPesos(subtotal)}</strong></td>
+          <td data-label="">
+            <button type="button" class="btn-pequeno btn-eliminar" data-id="${escaparHTML(item.productoId)}">Quitar</button>
+          </td>
+        `;
+        cuerpoCarrito.appendChild(fila);
+      });
+
+      const hayItems = carrito.length > 0;
+      tablaCarrito.hidden = !hayItems;
+      carritoVacio.hidden = hayItems;
+      totalPedido.textContent = formatoPesos(total);
+    }
+
+    // Quita un producto del carrito.
+    cuerpoCarrito.addEventListener('click', function (evento) {
+      const boton = evento.target.closest('button');
+      if (!boton) return;
+      carrito = carrito.filter(i => i.productoId !== boton.dataset.id);
+      renderCarrito();
+      llenarProductosPedido();
+    });
+
+    // Eventos del selector de productos.
+    selCategoria.addEventListener('change', function () {
+      selProducto.value = '';
+      llenarProductosPedido();
+    });
+    selProducto.addEventListener('change', mostrarInfoProducto);
+    inputCantPedido.addEventListener('input', mostrarInfoProducto);
+    btnAgregar.addEventListener('click', agregarAlCarrito);
+
+    // Si el cliente presiona Enter en la cantidad, se agrega el producto
+    // (en lugar de enviar todo el pedido).
+    inputCantPedido.addEventListener('keydown', function (evento) {
+      if (evento.key === 'Enter') {
+        evento.preventDefault();
+        agregarAlCarrito();
+      }
+    });
+
+    // Vaciar el pedido completo.
+    $('btn-vaciar').addEventListener('click', function () {
+      carrito = [];
+      ocultarMensaje(errorPedido);
+      renderCarrito();
+      llenarProductosPedido();
+    });
+
+
+    /* =========================================================
+       7. PEDIDO - FORMA DE PAGO
+       ========================================================= */
+
+    // Muestra una nota distinta según la forma de pago elegida.
+    opcionesPago.addEventListener('change', function () {
+      const pago = formPedido.querySelector('input[name="pago"]:checked');
+      if (!pago) {
+        notaPago.hidden = true;
+        return;
+      }
+      notaPago.textContent = pago.value === 'Efectivo'
+        ? 'Pagas al recibir el pedido. Si puedes, ten el valor exacto o avísanos con cuánto vas a pagar.'
+        : 'Te enviaremos los datos de la cuenta por WhatsApp al celular registrado para que hagas la transferencia.';
+      notaPago.hidden = false;
+    });
+
+
+    /* =========================================================
+       8. PEDIDO - VALIDACIÓN Y CONFIRMACIÓN (CREAR PEDIDO)
+       ========================================================= */
+
+    // Lee y valida los datos del cliente, el carrito y la forma de pago.
+    // Devuelve los datos limpios o null si hay errores.
+    function leerFormPedido() {
+      limpiarInvalidos(formPedido);
+      ocultarMensaje(errorPedido);
+      const errores = [];
+
+      const inNombre    = $('cliente-nombre');
+      const inCedula    = $('cliente-cedula');
+      const inCelular   = $('cliente-celular');
+      const inDireccion = $('cliente-direccion');
+
+      // Se quitan espacios repetidos del nombre y la dirección.
+      const nombre    = inNombre.value.trim().replace(/\s+/g, ' ');
+      const direccion = inDireccion.value.trim().replace(/\s+/g, ' ');
+      // A la cédula y al celular se les quitan puntos, espacios y guiones.
+      const cedula    = inCedula.value.replace(/[\s.\-]/g, '');
+      const celular   = inCelular.value.replace(/[\s.\-]/g, '');
+
+      // Nombre completo: al menos 2 palabras (nombre y apellido),
+      // cada una con mínimo 2 letras, y sin números ni símbolos.
+      const palabras = nombre.split(' ').filter(Boolean);
+      if (!/^[\p{L}' ]+$/u.test(nombre) || palabras.length < 2 || palabras.some(p => p.replace(/'/g, '').length < 2)) {
+        errores.push('Escribe tu nombre completo (nombre y apellido, solo letras).');
+        marcarInvalido(inNombre);
+      }
+
+      // Cédula colombiana: solo números, entre 6 y 10 dígitos.
+      if (!/^\d{6,10}$/.test(cedula)) {
+        errores.push('La cédula debe tener solo números, entre 6 y 10 dígitos.');
+        marcarInvalido(inCedula);
+      }
+
+      // Celular colombiano: 10 dígitos y empieza por 3.
+      if (!/^3\d{9}$/.test(celular)) {
+        errores.push('El celular debe tener 10 dígitos y empezar por 3.');
+        marcarInvalido(inCelular);
+      }
+
+      // Dirección: mínimo 5 caracteres y al menos un número.
+      if (direccion.length < 5 || !/\d/.test(direccion)) {
+        errores.push('Escribe una dirección válida (ej: Calle 45 # 12-30).');
+        marcarInvalido(inDireccion);
+      }
+
+      // Debe haber al menos un producto en el pedido.
+      if (carrito.length === 0) {
+        errores.push('Agrega al menos un producto a tu pedido.');
+        marcarInvalido(selCategoria);
+      }
+
+      // Forma de pago obligatoria.
+      const pago = formPedido.querySelector('input[name="pago"]:checked');
+      if (!pago) {
+        errores.push('Elige si pagas en efectivo o por transferencia.');
+        marcarInvalido(opcionesPago);
+      }
+
+      if (errores.length > 0) {
+        mostrarMensaje(errorPedido, errores);
+        const primero = formPedido.querySelector('.invalido');
+        if (primero) {
+          primero.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (primero.matches('input, select') ? primero : primero.querySelector('input')).focus({ preventScroll: true });
+        }
+        return null;
+      }
+
+      return {
+        cliente: { nombre, cedula, celular, direccion },
+        metodoPago: pago.value,
+        // Solo se envían los ids y las cantidades: el precio lo pone el inventario.
+        items: carrito.map(i => ({ productoId: i.productoId, cantidad: i.cantidad }))
+      };
+    }
+
+    // Evento: confirmar el pedido (CREAR pedido).
+    formPedido.addEventListener('submit', async function (evento) {
+      evento.preventDefault();
+      const datos = leerFormPedido();
+      if (!datos) return;
+
+      // Aquí se guarda el pedido creado (si todo sale bien).
+      let pedidoNuevo = null;
+
+      await conBotonOcupado(btnConfirmar, async function () {
+        try {
+          pedidoNuevo = await almacen.crearPedido(datos);
+
+          // Se limpia el formulario para un nuevo pedido.
+          formPedido.reset();
+          inputCantPedido.value = 1;
+          notaPago.hidden = true;
+          carrito = [];
+        } catch (error) {
+          mostrarErrorDe(errorPedido, error);
+        }
+      });
+
+      await recargarDatos();
+
+      // Si hubo un error, se queda en el formulario mostrando el mensaje rojo.
+      if (!pedidoNuevo) {
+        errorPedido.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // PROTOTIPO: apenas se confirma, la página sube directo a
+      // "Pedidos registrados" y resalta el pedido nuevo.
+      mostrarToast(
+        `¡Pedido #${pedidoNuevo.numero} registrado! Total: ${formatoPesos(pedidoNuevo.total)} · ${pedidoNuevo.metodoPago}`,
+        'exito'
+      );
+      irAPedidoRegistrado(pedidoNuevo.id);
+    });
+
+    // Lleva la vista a la sección de pedidos y resalta la tarjeta del pedido indicado.
+    function irAPedidoRegistrado(id) {
+      $('pedidos').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      const tarjeta = listaPedidos.querySelector(`.pedido[data-id="${CSS.escape(id)}"]`);
+      if (!tarjeta) return;
+
+      // Se quita y se vuelve a poner la clase para que la animación se repita.
+      tarjeta.classList.remove('pedido-nuevo');
+      void tarjeta.offsetWidth;
+      tarjeta.classList.add('pedido-nuevo');
+    }
+
+    activarLimpiezaAlCorregir(formPedido, errorPedido);
+
+
+    /* =========================================================
+       9. PEDIDOS REGISTRADOS - LISTAR Y CANCELAR
+       ========================================================= */
+
+    const listaPedidos = $('lista-pedidos');
+
+    // Dibuja una tarjeta por cada pedido (el más reciente primero).
+    function listarPedidos() {
+      const pedidos = estado.pedidos.slice().reverse();
+      listaPedidos.innerHTML = '';
+
+      $('pedidos-vacio').hidden = pedidos.length > 0;
+      $('contador-pedidos').textContent = pedidos.length > 0 ? `(${pedidos.length})` : '';
+
+      pedidos.forEach(function (pedido) {
+        const itemsHTML = pedido.items.map(i => `
+          <li>
+            <span>${formatoNumero(i.cantidad)} × ${escaparHTML(i.nombre)}</span>
+            <span>${formatoPesos(i.subtotal)}</span>
+          </li>`).join('');
+
+        const clasePago = pedido.metodoPago === 'Efectivo' ? 'insignia-efectivo' : 'insignia-transferencia';
+        const c = pedido.cliente;
+
+        const tarjeta = document.createElement('article');
+        tarjeta.className = 'pedido';
+        tarjeta.dataset.id = pedido.id;   // Para poder encontrarla y resaltarla
+        tarjeta.innerHTML = `
+          <div class="pedido-encabezado">
+            <h3>Pedido #${escaparHTML(pedido.numero)}</h3>
+            <span class="pedido-fecha">${formatoFecha.format(new Date(pedido.fecha))}</span>
+          </div>
+          <div class="pedido-cliente">
+            <div><strong>${escaparHTML(c.nombre)}</strong> · C.C. ${escaparHTML(c.cedula)}</div>
+            <div>📱 ${escaparHTML(c.celular)}</div>
+            <div>📍 ${escaparHTML(c.direccion)}</div>
+          </div>
+          <ul class="pedido-items">${itemsHTML}</ul>
+          <div class="pedido-pie">
+            <span class="pedido-total">Total: ${formatoPesos(pedido.total)}</span>
+            <span class="insignia ${clasePago}">${escaparHTML(pedido.metodoPago)}</span>
+          </div>
+          <button type="button" class="btn-pequeno btn-eliminar" data-id="${escaparHTML(pedido.id)}">Cancelar pedido</button>
+        `;
+        listaPedidos.appendChild(tarjeta);
+      });
+    }
+
+    // Cancela un pedido: lo borra y devuelve las unidades al inventario.
+    async function cancelarPedido(id) {
+      const pedido = estado.pedidos.find(p => p.id === id);
+      if (!pedido) return recargarDatos();
+
+      if (!confirm(`¿Cancelar el pedido #${pedido.numero}? Las unidades volverán al inventario.`)) return;
+
+      try {
+        await almacen.cancelarPedido(id);
+      } catch (error) {
+        mostrarErrorDe(errorPedido, error);
+      }
+      await recargarDatos();
+    }
+
+    listaPedidos.addEventListener('click', function (evento) {
+      const boton = evento.target.closest('button');
+      if (boton) cancelarPedido(boton.dataset.id);
+    });
+
+
+    /* =========================================================
+       10. ACTUALIZAR TODA LA PÁGINA E INICIO
+       ========================================================= */
+
+    // Vuelve a dibujar todo lo que depende de los datos.
+    function actualizarVistas() {
+      listarProductos();
+      renderCarrito();
+      llenarCategoriasPedido();
+      listarPedidos();
+    }
+
+    // Decide si se trabaja con el servidor o en modo local:
+    // si la página se abrió desde el servidor (http://...) y la API responde,
+    // se usa el servidor; si se abrió el archivo directamente, se usa localStorage.
+    async function detectarModo() {
+      if (location.protocol === 'http:' || location.protocol === 'https:') {
+        try {
+          const respuesta = await fetch('/api/productos', { method: 'GET' });
+          if (respuesta.ok) return 'servidor';
+        } catch (error) {
+          // No hay servidor: se usa el modo local.
+        }
+      }
+      return 'local';
+    }
+
+    // Arranque de la aplicación.
+    async function iniciar() {
+      estado.modo = await detectarModo();
+      almacen = estado.modo === 'servidor' ? almacenServidor : almacenLocal;
+      mostrarEstadoConexion(estado.modo === 'servidor' ? 'conectado' : 'local');
+
+      await recargarDatos();
+
+      // En modo servidor se recargan los datos cada cierto tiempo,
+      // así el tendero ve los pedidos nuevos sin recargar la página.
+      if (estado.modo === 'servidor') {
+        setInterval(function () {
+          if (!document.hidden) recargarDatos();
+        }, RECARGA_MS);
+        // También al volver a la pestaña.
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) recargarDatos();
+        });
+      }
+    }
+
+    iniciar();
+</script>
+
+</body>
+</html>
